@@ -1,4 +1,4 @@
-// Arquivo: api/analyze.js (versão final com novo proxy)
+// Arquivo: api/analyze.js (versão final com correção de URI)
 
 const axios = require('axios');
 
@@ -20,25 +20,23 @@ module.exports = async (req, res) => {
         }
 
         const appId = match[1];
-        const marketHashName = decodeURIComponent(match[2]);
+        // --- INÍCIO DA CORREÇÃO ---
+        // O nome do item já vem decodificado do parâmetro da URL,
+        // então removemos a linha 'decodeURIComponent' que estava causando o erro.
+        const marketHashName = match[2];
+        // --- FIM DA CORREÇÃO ---
 
         const steamApiUrl = `https://steamcommunity.com/market/pricehistory/?appid=${appId}&market_hash_name=${encodeURIComponent(marketHashName )}&country=US&currency=1`;
         
-        // --- INÍCIO DA MODIFICAÇÃO ---
-        // Trocamos o proxy 'api.allorigins.win' por 'cors-anywhere.herokuapp.com'
-        // que é outra alternativa popular.
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${steamApiUrl}`;
 
-        // Para este proxy, precisamos enviar um cabeçalho 'Origin' para que ele funcione.
         const proxyResponse = await axios.get(proxyUrl, {
             headers: {
-                'Origin': 'https://anunciarvender.com.br' // Enviamos a origem do seu site
+                'Origin': 'https://anunciarvender.com.br'
             }
         } );
 
-        // A resposta deste proxy vem diretamente no corpo, não encapsulada.
         const steamData = proxyResponse.data;
-        // --- FIM DA MODIFICAÇÃO ---
 
         if (!steamData || !steamData.success) {
             return res.status(502).json({ error: 'API do Steam retornou uma resposta inválida.', steam_response: steamData });
