@@ -1,9 +1,8 @@
-// Arquivo: api/analyze.js (versão final com extração de URL corrigida)
+// Arquivo: api/analyze.js (versão final com novo proxy)
 
 const axios = require('axios');
 
 module.exports = async (req, res) => {
-    // Habilita o CORS para qualquer resposta.
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
@@ -14,9 +13,6 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'URL do Steam não fornecida.' });
         }
 
-        // --- INÍCIO DA CORREÇÃO ---
-        // Usamos uma expressão regular para extrair os dados da URL de forma segura.
-        // Isso é mais robusto do que usar 'new URL()'.
         const match = steamUrl.match(/market\/listings\/(\d+)\/(.*)/);
 
         if (!match || match.length < 3) {
@@ -24,20 +20,25 @@ module.exports = async (req, res) => {
         }
 
         const appId = match[1];
-        const marketHashName = decodeURIComponent(match[2]); // Decodifica o nome do item
-        // --- FIM DA CORREÇÃO ---
+        const marketHashName = decodeURIComponent(match[2]);
 
         const steamApiUrl = `https://steamcommunity.com/market/pricehistory/?appid=${appId}&market_hash_name=${encodeURIComponent(marketHashName )}&country=US&currency=1`;
         
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(steamApiUrl )}`;
+        // --- INÍCIO DA MODIFICAÇÃO ---
+        // Trocamos o proxy 'api.allorigins.win' por 'cors-anywhere.herokuapp.com'
+        // que é outra alternativa popular.
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${steamApiUrl}`;
 
-        const proxyResponse = await axios.get(proxyUrl);
-        
-        if (!proxyResponse.data || !proxyResponse.data.contents) {
-            return res.status(502).json({ error: 'Proxy não retornou conteúdo válido.' });
-        }
+        // Para este proxy, precisamos enviar um cabeçalho 'Origin' para que ele funcione.
+        const proxyResponse = await axios.get(proxyUrl, {
+            headers: {
+                'Origin': 'https://anunciarvender.com.br' // Enviamos a origem do seu site
+            }
+        } );
 
-        const steamData = JSON.parse(proxyResponse.data.contents);
+        // A resposta deste proxy vem diretamente no corpo, não encapsulada.
+        const steamData = proxyResponse.data;
+        // --- FIM DA MODIFICAÇÃO ---
 
         if (!steamData || !steamData.success) {
             return res.status(502).json({ error: 'API do Steam retornou uma resposta inválida.', steam_response: steamData });
